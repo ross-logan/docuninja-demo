@@ -1,0 +1,59 @@
+name: Fake Auto-Docs Demo
+
+on:
+  push:
+    branches:
+      - main  # or your demo branch
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Get Last Commit Message
+        id: commit_msg
+        run: |
+          echo "MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+
+      - name: Generate Fake Changelog Entry
+        run: |
+          FEATURE_ID=$(date +%s)
+          CHANGELOG_FILE="docs/changelog.md"
+          FEATURE_FILE="docs/features/feature-$FEATURE_ID.md"
+
+          mkdir -p docs/features
+
+          FAKE_CHANGE="Improved user dashboard with personalized insights and new analytics cards."
+          FAKE_SUMMARY="This feature introduces a smarter dashboard view, showing relevant insights and charts based on recent user behavior. Includes performance boosts and a cleaner layout."
+
+          # Insert into changelog.md under ### Added
+          awk -v line="- $FAKE_CHANGE" '
+            BEGIN { added = 0 }
+            {
+              print
+              if ($0 ~ /^### Added/) {
+                print line
+                added = 1
+              }
+            }
+            END {
+              if (added == 0) {
+                print "\n### Added\n" line
+              }
+            }
+          ' "$CHANGELOG_FILE" > tmp.md && mv tmp.md "$CHANGELOG_FILE"
+
+          # Create new feature markdown file
+          echo "# Feature: Smarter Dashboard\n" > "$FEATURE_FILE"
+          echo "$FAKE_SUMMARY" >> "$FEATURE_FILE"
+
+      - name: Commit and Push Changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/
+          git commit -m "chore(docs): auto-generate changelog and feature doc"
+          git push
