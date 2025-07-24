@@ -3,22 +3,26 @@ name: Fake Auto-Docs Demo
 on:
   push:
     branches:
-      - main  # or your demo branch
+      - main  # Change this to your desired branch
 
 jobs:
   update-docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push changes to repo
 
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get Last Commit Message
         id: commit_msg
         run: |
           echo "MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
 
-      - name: Generate Fake Changelog Entry
+      - name: Generate Fake Changelog and Feature Doc
         run: |
           FEATURE_ID=$(date +%s)
           CHANGELOG_FILE="docs/changelog.md"
@@ -29,31 +33,25 @@ jobs:
           FAKE_CHANGE="Improved user dashboard with personalized insights and new analytics cards."
           FAKE_SUMMARY="This feature introduces a smarter dashboard view, showing relevant insights and charts based on recent user behavior. Includes performance boosts and a cleaner layout."
 
-          # Insert into changelog.md under ### Added
-          awk -v line="- $FAKE_CHANGE" '
-            BEGIN { added = 0 }
-            {
-              print
-              if ($0 ~ /^### Added/) {
-                print line
-                added = 1
-              }
-            }
-            END {
-              if (added == 0) {
-                print "\n### Added\n" line
-              }
-            }
-          ' "$CHANGELOG_FILE" > tmp.md && mv tmp.md "$CHANGELOG_FILE"
+          # Add changelog line under ### Added
+          if grep -q "^### Added" "$CHANGELOG_FILE"; then
+            awk -v line="- $FAKE_CHANGE" '
+              /^### Added/ { print; print line; next }
+              { print }
+            ' "$CHANGELOG_FILE" > tmp && mv tmp "$CHANGELOG_FILE"
+          else
+            echo -e "\n### Added\n- $FAKE_CHANGE" >> "$CHANGELOG_FILE"
+          fi
 
-          # Create new feature markdown file
-          echo "# Feature: Smarter Dashboard\n" > "$FEATURE_FILE"
+          # Create fake feature markdown
+          echo "# Feature: Smarter Dashboard" > "$FEATURE_FILE"
+          echo "" >> "$FEATURE_FILE"
           echo "$FAKE_SUMMARY" >> "$FEATURE_FILE"
 
       - name: Commit and Push Changes
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config --global user.name "AutoDoc Bot"
+          git config --global user.email "autodoc@github.com"
           git add docs/
-          git commit -m "chore(docs): auto-generate changelog and feature doc"
+          git diff --cached --quiet || git commit -m "chore(docs): auto-generate changelog and feature doc"
           git push
