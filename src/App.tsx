@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Home from './components/Home'
 import Profile from './components/Profile'
+import About from './components/About'
 import Settings from './components/Settings'
 import './App.css'
 
@@ -14,6 +15,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/about" element={<About />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>

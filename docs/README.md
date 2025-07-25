@@ -15,6 +15,7 @@ Detailed documentation for each page/feature in the application. Each page has i
 Current pages:
 - **Home** - Main landing page with welcome content
 - **Profile** - User profile management and personal information
+- **About** - Application information, features, and technology details
 - **Settings** - Application settings and configuration options
 
 ## Automated Documentation
