@@ -1,12 +1,12 @@
-name: Auto-Changelog from Commit Message
+name: AI Changelog Generator
 
 on:
   push:
     branches:
-      - main  # or 'qa', etc.
+      - main  # Or your desired branch
 
 jobs:
-  update-changelog:
+  summarize-commit:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -17,34 +17,55 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Last Commit Message
-        id: get_commit
+      - name: Get Last Commit Diff
+        id: diff
         run: |
-          echo "message=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+          git fetch origin
+          DIFF=$(git show --no-color HEAD)
+          DIFF_CLEANED=$(echo "$DIFF" | head -c 4000 | sed 's/"/\\"/g')
+          echo "diff_text=\"$DIFF_CLEANED\"" >> $GITHUB_ENV
 
-      - name: Insert Commit Message into Changelog
+      - name: Get AI Summary from OpenAI
+        id: ai_summary
         run: |
-          COMMIT_MSG="${{ steps.get_commit.outputs.message }}"
+          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
+            -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"model\": \"gpt-4-o\",
+              \"messages\": [
+                {\"role\": \"system\", \"content\": \"You are a helpful assistant that summarizes code changes for changelogs.\"},
+                {\"role\": \"user\", \"content\": \"Summarize these code changes in a single sentence:\n\n$diff_text\"}
+              ]
+            }")
+
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | tr '\n' ' ')
+          echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+
+      - name: Add Summary to Changelog
+        run: |
           CHANGELOG_FILE="docs/changelog.md"
+          DATE=$(date +"%Y-%m-%d")
+          SUMMARY="${{ steps.ai_summary.outputs.summary }}"
+          ENTRY="$DATE - $SUMMARY"
 
-          # Create changelog file if it doesn't exist
           mkdir -p docs
           touch "$CHANGELOG_FILE"
 
-          # Insert under '### Added' or add section if missing
+          # Insert entry under ### Added or create it
           if grep -q "^### Added" "$CHANGELOG_FILE"; then
-            awk -v line="- $COMMIT_MSG" '
+            awk -v line="$ENTRY" '
               /^### Added/ { print; print line; next }
               { print }
             ' "$CHANGELOG_FILE" > tmp && mv tmp "$CHANGELOG_FILE"
           else
-            echo -e "\n### Added\n- $COMMIT_MSG" >> "$CHANGELOG_FILE"
+            echo -e "\n### Added\n$ENTRY" >> "$CHANGELOG_FILE"
           fi
 
       - name: Commit and Push Changes
         run: |
-          git config --global user.name "DocuNinja"
-          git config --global user.email "docuninja@github.com"
+          git config --global user.name "AutoDoc Bot"
+          git config --global user.email "autodoc@github.com"
           git add docs/changelog.md
-          git diff --cached --quiet || git commit -m "chore(changelog): add commit message to changelog"
+          git diff --cached --quiet || git commit -m "chore(changelog): add AI-generated summary with date"
           git push
