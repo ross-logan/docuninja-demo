@@ -3,7 +3,7 @@ name: AI Changelog Generator
 on:
   push:
     branches:
-      - main  # Or your desired branch
+      - main
 
 jobs:
   summarize-commit:
@@ -17,42 +17,39 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Last Commit Diff
-        id: diff
-        run: |
-          git fetch origin
-          DIFF=$(git show --no-color HEAD)
-          DIFF_CLEANED=$(echo "$DIFF" | head -c 4000 | sed 's/"/\\"/g')
-          echo "diff_text=\"$DIFF_CLEANED\"" >> $GITHUB_ENV
-
-      - name: Get AI Summary from OpenAI
+      - name: Get AI Summary of Last Commit
         id: ai_summary
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          DATE=$(date +"%Y-%m-%d")
+          DIFF=$(git show --no-color HEAD | head -c 4000)
+
+          REQUEST=$(jq -n --arg diff "$DIFF" '{
+            model: "gpt-4-o",
+            messages: [
+              {role: "system", content: "You are a helpful assistant that summarizes code changes for changelogs."},
+              {role: "user", content: "Summarize these code changes in a single sentence:\n\n\($diff)"}
+            ]
+          }')
+
           RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
-            -H "Authorization: Bearer ${{ secrets.OPENAI_API_KEY }}" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"model\": \"gpt-4-o\",
-              \"messages\": [
-                {\"role\": \"system\", \"content\": \"You are a helpful assistant that summarizes code changes for changelogs.\"},
-                {\"role\": \"user\", \"content\": \"Summarize these code changes in a single sentence:\n\n$diff_text\"}
-              ]
-            }")
+            -d "$REQUEST")
 
           SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | tr '\n' ' ')
-          echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          echo "SUMMARY=$SUMMARY" >> $GITHUB_ENV
 
-      - name: Add Summary to Changelog
+      - name: Update Changelog
         run: |
           CHANGELOG_FILE="docs/changelog.md"
-          DATE=$(date +"%Y-%m-%d")
-          SUMMARY="${{ steps.ai_summary.outputs.summary }}"
-          ENTRY="$DATE - $SUMMARY"
-
           mkdir -p docs
           touch "$CHANGELOG_FILE"
 
-          # Insert entry under ### Added or create it
+          ENTRY="$DATE - $SUMMARY"
+
           if grep -q "^### Added" "$CHANGELOG_FILE"; then
             awk -v line="$ENTRY" '
               /^### Added/ { print; print line; next }
@@ -62,10 +59,10 @@ jobs:
             echo -e "\n### Added\n$ENTRY" >> "$CHANGELOG_FILE"
           fi
 
-      - name: Commit and Push Changes
+      - name: Commit and Push
         run: |
-          git config --global user.name "AutoDoc Bot"
-          git config --global user.email "autodoc@github.com"
+          git config --global user.name "DocuNinja Bot"
+          git config --global user.email "docuninja@github.com"
           git add docs/changelog.md
-          git diff --cached --quiet || git commit -m "chore(changelog): add AI-generated summary with date"
+          git diff --cached --quiet || git commit -m "chore(changelog): AI-generated summary"
           git push
