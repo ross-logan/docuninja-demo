@@ -38,7 +38,12 @@ jobs:
             -H "Content-Type: application/json" \
             -d "$REQUEST")
 
-          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | tr '\n' ' ')
+          # SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | tr '\n' ' ')
+          echo "🔍 OpenAI API Response:"
+          echo "$RESPONSE"
+
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' | tr '\n' ' ')
+          echo "📝 Extracted summary: $SUMMARY"
           echo "DATE=$DATE" >> $GITHUB_ENV
           echo "SUMMARY=$SUMMARY" >> $GITHUB_ENV
 
