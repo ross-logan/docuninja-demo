@@ -24,13 +24,6 @@ export default function Sidebar() {
         </NavLink>
         
         <NavLink 
-          to="/about" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          About
-        </NavLink>
-        
-        <NavLink 
           to="/settings" 
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >

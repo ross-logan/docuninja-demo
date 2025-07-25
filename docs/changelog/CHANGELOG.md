@@ -11,8 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup with Vite + React + TypeScript
 - React Router DOM for navigation
 - Green theme color system with CSS custom properties
-- Sidebar navigation with four pages: Home, Profile, About, Settings
-- About page with application information and technology details
+- Sidebar navigation with three pages: Home, Profile, Settings
 - Comprehensive documentation structure for automated updates
 - Responsive layout with fixed sidebar
 
@@ -20,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced default Vite starter content with custom application
 - Updated color scheme from blue to green theme
 - Reorganized documentation to focus on page-specific features
+
+### Removed
+- About page and associated documentation
 
 ### Removed
 - Default Vite boilerplate code and styling
