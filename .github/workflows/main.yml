@@ -43,8 +43,8 @@ jobs:
 
       - name: Commit and Push Changes
         run: |
-          git config --global user.name "AutoDoc Bot"
-          git config --global user.email "autodoc@github.com"
+          git config --global user.name "DocuNinja"
+          git config --global user.email "docuninja@github.com"
           git add docs/changelog.md
           git diff --cached --quiet || git commit -m "chore(changelog): add commit message to changelog"
           git push
